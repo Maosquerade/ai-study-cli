@@ -31,7 +31,7 @@ def test_cli_add_list_ask_and_review(tmp_path: Path, monkeypatch) -> None:
     ask_result = runner.invoke(app, ["ask", "如何理解 PagedAttention?", "--topic", "vllm"])
     socratic_result = runner.invoke(
         app,
-        ["socratic", "vllm", "--goal", "理解 KV cache block table"],
+        ["socratic", "vllm", "--goal", "理解 KV cache block table", "--once"],
     )
     review_result = runner.invoke(app, ["review"])
 
@@ -43,3 +43,17 @@ def test_cli_add_list_ask_and_review(tmp_path: Path, monkeypatch) -> None:
     assert "你认为" in socratic_result.output
     assert "理解 KV cache block table" in review_result.output
 
+
+def test_cli_socratic_interactive_loop(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("AI_STUDY_PROVIDER", "mock")
+    monkeypatch.setenv("AI_STUDY_DATA_DIR", str(tmp_path / "data"))
+
+    result = runner.invoke(
+        app,
+        ["socratic", "vllm", "--goal", "理解 KV cache"],
+        input="我认为主要是带宽瓶颈\n/exit\n",
+    )
+
+    assert result.exit_code == 0
+    assert "输入你的回答继续" in result.output
+    assert "已结束本次学习" in result.output

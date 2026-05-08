@@ -7,7 +7,7 @@ import typer
 from ai_study.config import load_settings
 from ai_study.llm import create_llm_client
 from ai_study.storage import StudyStore
-from ai_study.study import add_markdown, ask as ask_question, socratic_prompt
+from ai_study.study import add_markdown, ask as ask_question, socratic_next, socratic_prompt
 
 app = typer.Typer(help="Terminal-first AI study assistant.")
 
@@ -46,10 +46,24 @@ def ask(
 def socratic(
     topic: str = typer.Argument(..., help="Study topic."),
     goal: str = typer.Option(..., "--goal", "-g", help="Learning goal for this session."),
+    once: bool = typer.Option(False, "--once", help="Ask only the first question and exit."),
 ) -> None:
     """Start a focused Socratic learning session."""
-    answer = socratic_prompt(_client(), _store(), topic, goal)
+    client = _client()
+    store = _store()
+    answer = socratic_prompt(client, store, topic, goal)
     typer.echo(answer)
+    if once:
+        return
+
+    typer.echo("\n输入你的回答继续；输入 /exit 或 /quit 结束。")
+    while True:
+        user_answer = typer.prompt("你")
+        if user_answer.strip().lower() in {"/exit", "/quit", "exit", "quit", "q"}:
+            typer.echo("已结束本次学习。")
+            return
+        answer = socratic_next(client, store, topic, goal, user_answer)
+        typer.echo(answer)
 
 
 @app.command("add-md")
@@ -86,4 +100,3 @@ def review(limit: int = typer.Option(5, "--limit", "-n")) -> None:
 
 if __name__ == "__main__":
     app()
-

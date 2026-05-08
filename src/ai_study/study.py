@@ -57,6 +57,40 @@ def socratic_prompt(client: LlmClient, store: StudyStore, topic: str, goal: str)
     return answer
 
 
+def socratic_next(
+    client: LlmClient,
+    store: StudyStore,
+    topic: str,
+    goal: str,
+    user_answer: str,
+) -> str:
+    context = build_context(store, goal, topic)
+    history = store.recent_messages(limit=8)
+    history_text = "\n".join(
+        f"{role}: {content}" for mode, role, message_topic, content in history
+        if mode == "socratic" and message_topic == topic
+    )
+    messages = [
+        ChatMessage("system", load_prompt("socratic.md")),
+        ChatMessage(
+            "user",
+            (
+                f"Topic: {topic}\n"
+                f"Goal: {goal}\n"
+                f"Local context:\n{context}\n\n"
+                f"Recent session history:\n{history_text}\n\n"
+                f"Student answer:\n{user_answer}\n\n"
+                "Give brief feedback on the student's answer, correct misunderstandings if any, "
+                "then ask exactly one next question."
+            ),
+        ),
+    ]
+    answer = client.complete(messages)
+    store.add_message("socratic", "user", user_answer, topic)
+    store.add_message("socratic", "assistant", answer, topic)
+    return answer
+
+
 def add_markdown(store: StudyStore, path: Path, topic: str | None = None) -> int:
     content = path.read_text(encoding="utf-8")
     inferred_topic = topic or path.parent.name or "general"
@@ -75,4 +109,3 @@ def _extract_title(content: str) -> str | None:
         if stripped.startswith("# "):
             return stripped[2:].strip()
     return None
-

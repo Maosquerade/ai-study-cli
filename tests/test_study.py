@@ -2,7 +2,7 @@ from pathlib import Path
 
 from ai_study.llm import MockLlmClient
 from ai_study.storage import StudyStore
-from ai_study.study import add_markdown, ask, socratic_prompt
+from ai_study.study import add_markdown, ask, socratic_next, socratic_prompt
 
 
 def test_add_markdown_extracts_title(tmp_path: Path) -> None:
@@ -36,3 +36,14 @@ def test_socratic_adds_review_question(tmp_path: Path) -> None:
     assert "你认为" in answer
     assert store.pending_reviews()[0][1] == "vllm"
 
+
+def test_socratic_next_records_student_answer(tmp_path: Path) -> None:
+    store = StudyStore(tmp_path / "study.db")
+    client = MockLlmClient()
+    socratic_prompt(client, store, "vllm", "理解 KV cache 管理")
+
+    answer = socratic_next(client, store, "vllm", "理解 KV cache 管理", "主要瓶颈是 HBM 带宽")
+
+    assert "你认为" in answer
+    messages = store.recent_messages(limit=4)
+    assert any(message[3] == "主要瓶颈是 HBM 带宽" for message in messages)
