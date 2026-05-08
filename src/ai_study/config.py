@@ -23,6 +23,7 @@ class Settings:
 
 def load_settings(env_file: Path | None = None) -> Settings:
     if env_file and env_file.exists():
+        _clear_ai_study_env()
         load_dotenv(env_file, override=True)
     else:
         load_dotenv()
@@ -55,3 +56,14 @@ def _default_model(provider: str) -> str:
         "mock": "mock-study-model",
     }
     return defaults.get(provider, "mock-study-model")
+
+
+def _clear_ai_study_env() -> None:
+    for key in [
+        "AI_STUDY_PROVIDER",
+        "AI_STUDY_API_KEY",
+        "AI_STUDY_BASE_URL",
+        "AI_STUDY_MODEL",
+        "AI_STUDY_DATA_DIR",
+    ]:
+        os.environ.pop(key, None)
